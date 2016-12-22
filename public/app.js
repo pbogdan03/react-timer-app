@@ -240,8 +240,16 @@ const Timer = React.createClass({
     this.props.onDeleteClick(this.props.id);
   },
 
+  componentDidMount: function() {
+    this.forceUpdateInterval = setInterval(() => this.forceUpdate(), 50);
+  },
+
+  componentWillMount: function() {
+    clearInterval(this.forceUpdateInterval);
+  },
+
   render: function() {
-    const elapsedString = helpers.renderElapsedString(this.props.elapsed);
+    const elapsedString = helpers.renderElapsedString(this.props.elapsed, this.props.runningSince);
     return (
       <div className="ui centered card">
         <div className="content">
