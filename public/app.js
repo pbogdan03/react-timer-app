@@ -32,6 +32,14 @@ const TimersDashboard = React.createClass({
     this.deleteTimer(id);
   },
 
+  handleStartClick: function(id) {
+    this.startTimer(id);
+  },
+
+  handleStopClick: function(id) {
+    this.stopTimer(id);
+  },
+
   createTimer: function(timer) {
     const t = helpers.newTimer(timer);
     this.setState({
@@ -60,6 +68,42 @@ const TimersDashboard = React.createClass({
     });
   },
 
+  startTimer: function(id) {
+    const now = Date.now();
+
+    this.setState({
+      timers: this.state.timers.map((timer) => {
+        if(timer.id === id) {
+          return {
+            ...timer,
+            runningSince: now
+          }
+        } else {
+          return timer;
+        }
+      })
+    });
+  },
+
+  stopTimer: function(id) {
+    const now = Date.now();
+
+    this.setState({
+      timers: this.state.timers.map((timer) => {
+        if(timer.id === id) {
+          const lastElapsed = now - timer.runningSince;
+          return {
+            ...timer,
+            elapsed: timer.elapsed + lastElapsed,
+            runningSince: null
+          }
+        } else {
+          return timer;
+        }
+      })
+    });
+  },
+
   render: function() {
     return (
       <div className="ui three column centered grid">
@@ -67,7 +111,9 @@ const TimersDashboard = React.createClass({
           <EditableTimerList
             timers={this.state.timers}
             onFormSubmit={this.handleEditFormSubmit}
-            onDeleteClick={this.handleDelete} />
+            onDeleteClick={this.handleDelete}
+            onStartClick={this.handleStartClick}
+            onStopClick={this.handleStopClick} />
           <ToggleableTimerForm onFormSubmit={this.handleCreateFormSubmit} isOpen={true} />
         </div>
       </div>
@@ -87,7 +133,9 @@ const EditableTimerList = React.createClass({
           elapsed={timer.elapsed}
           runningSince={timer.runningSince}
           onFormSubmit={this.props.onFormSubmit}
-          onDeleteClick={this.props.onDeleteClick} />
+          onDeleteClick={this.props.onDeleteClick}
+          onStartClick={this.props.onStartClick}
+          onStopClick={this.props.onStopClick} />
       );
     });
 
@@ -146,7 +194,9 @@ const EditableTimer = React.createClass({
           elapsed={this.props.elapsed}
           runningSince={this.props.runningSince}
           onEditClick={this.handleEditClick}
-          onDeleteClick={this.props.onDeleteClick} />
+          onDeleteClick={this.props.onDeleteClick}
+          onStartClick={this.props.onStartClick}
+          onStopClick={this.props.onStopClick} />
       );
     }
   }
@@ -236,6 +286,12 @@ const ToggleableTimerForm = React.createClass({
 });
 
 const Timer = React.createClass({
+  getInitialState: function() {
+    return {
+      hovered: false
+    };
+  },
+
   handleDeleteClick: function() {
     this.props.onDeleteClick(this.props.id);
   },
@@ -248,11 +304,31 @@ const Timer = React.createClass({
     clearInterval(this.forceUpdateInterval);
   },
 
+  componentWillUnmount: function() {
+    clearInterval(this.forceUpdateInterval);
+  },
+
+  handleStartClick: function() {
+    this.props.onStartClick(this.props.id);
+  },
+
+  handleStopClick: function() {
+    this.props.onStopClick(this.props.id);
+  },
+
+  handleMouseEnter: function() {
+    this.setState({hovered: true});
+  },
+
+  handleMouseLeave: function() {
+    this.setState({hovered: false});
+  },
+
   render: function() {
     const elapsedString = helpers.renderElapsedString(this.props.elapsed, this.props.runningSince);
     return (
-      <div className="ui centered card">
-        <div className="content">
+      <div className="ui centered card" onMouseEnter={this.handleMouseEnter} onMouseLeave={this.handleMouseLeave}>
+        <div className="content" style={{position: 'relative', marginBottom: 10}}>
           <div className="header">
             {this.props.title}
           </div>
@@ -264,26 +340,53 @@ const Timer = React.createClass({
               {elapsedString}
             </h2>
           </div>
-          <div className="extra content">
-            <span
-              className="right floated edit icon"
-              onClick={this.props.onEditClick} >
-              <i className="edit icon"></i>
-            </span>
-            <span
-              className="right floated thrash icon"
-              onClick={this.handleDeleteClick} >
-              <i className="trash icon"></i>
-            </span>
-          </div>
+          {this.state.hovered &&
+            <div className="extra content" style={{position: 'absolute', bottom: 0, right: 10}}>
+              <span
+                className="right floated edit icon"
+                onClick={this.props.onEditClick}
+                style={{cursor: 'pointer'}} >
+                <i className="edit icon"></i>
+              </span>
+              <span
+                className="right floated thrash icon"
+                onClick={this.handleDeleteClick}
+                style={{cursor: 'pointer'}} >
+                <i className="trash icon"></i>
+              </span>
+            </div>
+          }
         </div>
-        <div className="ui bottom attached blue basic button">
-          Start
-        </div>
+        <TimerActionButton
+          timerIsRunning={!!this.props.runningSince}
+          onStartClick={this.handleStartClick}
+          onStopClick={this.handleStopClick} />
       </div>
     );
   }
 });
+
+const TimerActionButton = React.createClass({
+  render: function() {
+    if(this.props.timerIsRunning) {
+      return (
+        <button
+          className="ui bottom attached red basic button"
+          onClick={this.props.onStopClick} >
+          Stop
+        </button>
+      );
+    } else {
+      return (
+        <button
+          className="ui bottom attached red basic button"
+          onClick={this.props.onStartClick} >
+          Start
+        </button>
+      )
+    }
+  }
+})
 
 ReactDOM.render(
   <TimersDashboard />,
