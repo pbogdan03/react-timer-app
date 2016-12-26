@@ -1,23 +1,19 @@
 const TimersDashboard = React.createClass({
   getInitialState: function() {
     return {
-      timers: [
-        {
-          title: 'Practice squat',
-          project: 'Gym chores',
-          id: uuid.v4(),
-          elapsed: 5456099,
-          runningSince: Date.now()
-        },
-        {
-          title: 'Bake squash',
-          project: 'Kitchen chores',
-          id: uuid.v4(),
-          elapsed: 1273998,
-          runningSince: null
-        }
-      ]
+      timers: []
     };
+  },
+
+  componentDidMount: function() {
+    this.loadTimersFromServer();
+    setInterval(this.loadTimersFromServer, 5000);
+  },
+
+  loadTimersFromServer: function() {
+    client.getTimers((timers) => {
+      this.setState({ timers });
+    });
   },
 
   handleCreateFormSubmit: function(timer) {
@@ -83,6 +79,11 @@ const TimersDashboard = React.createClass({
         }
       })
     });
+
+    client.startTimer({
+      id,
+      start: now
+    })
   },
 
   stopTimer: function(id) {
@@ -102,6 +103,11 @@ const TimersDashboard = React.createClass({
         }
       })
     });
+
+    client.stopTimer({
+      id,
+      stop: now
+    })
   },
 
   render: function() {
@@ -203,11 +209,37 @@ const EditableTimer = React.createClass({
 });
 
 const TimerForm = React.createClass({
+  getInitialState: function() {
+    return {
+      titleVal: '',
+      projectVal: ''
+    };
+  },
+
+  componentDidMount: function() {
+    this.setState({
+      titleVal: this.refs.title.value,
+      projectVal: this.refs.project.value
+    });
+  },
+
   handleSubmit: function() {
     this.props.onFormSubmit({
       id: this.props.id,
       title: this.refs.title.value,
       project: this.refs.project.value
+    });
+  },
+
+  handleTitleChange: function(ev) {
+    this.setState({
+      titleVal: ev.target.value
+    });
+  },
+
+  handleProjectChange: function(ev) {
+    this.setState({
+      projectVal: ev.target.value
     });
   },
 
@@ -217,13 +249,19 @@ const TimerForm = React.createClass({
       <div className="ui centered card">
         <div className="content">
           <div className="ui form">
-            <div className="field">
+            <div className={"field" + (this.state.titleVal ? '' : ' error')}>
               <label>Title</label>
-              <input type="text" ref="title" defaultValue={this.props.title} />
+              {!this.state.titleVal &&
+                <p className="input-error-msg">This field cannot be empty</p>
+              }
+              <input type="text" ref="title" defaultValue={this.props.title} onChange={this.handleTitleChange}/>
             </div>
-            <div className="field">
+            <div className={"field" + (this.state.projectVal ? '' : ' error')}>
               <label>Project</label>
-              <input type="text" ref="project" defaultValue={this.props.project} />
+              {!this.state.projectVal &&
+                <p className="input-error-msg">This field cannot be empty</p>
+              }
+              <input type="text" ref="project" defaultValue={this.props.project} onChange={this.handleProjectChange}/>
             </div>
             <div className="ui two bottom attached buttons">
               <button

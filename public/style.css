@@ -5,3 +5,8 @@
 #content {
   margin-top: 3em;
 }
+
+.input-error-msg {
+  font-size: 12px;
+  color: #9f3a38;
+}
