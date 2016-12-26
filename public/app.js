@@ -41,6 +41,8 @@ const TimersDashboard = React.createClass({
     this.setState({
       timers: this.state.timers.concat(t)
     });
+
+    client.createTimer(t);
   },
 
   updateTimer: function(attrs) {
@@ -56,12 +58,16 @@ const TimersDashboard = React.createClass({
         }
       })
     });
+
+    client.updateTimer(attrs);
   },
 
   deleteTimer: function(id) {
     this.setState({
       timers: this.state.timers.filter(timer => timer.id !== id)
     });
+
+    client.deleteTimer({id});
   },
 
   startTimer: function(id) {
