@@ -1,7 +1,9 @@
 const TimersDashboard = React.createClass({
   getInitialState: function() {
     return {
-      timers: []
+      timers: [],
+      serverError: false,
+      timerFromError: null
     };
   },
 
@@ -36,13 +38,27 @@ const TimersDashboard = React.createClass({
     this.stopTimer(id);
   },
 
+  handleError: function(error, timer) {
+    console.log('Server status: ', error.response.status);
+    console.log('Server error: ', error.response.statusText);
+
+    this.loadTimersFromServer();
+
+    this.setState({
+      serverError: true,
+      timerFromError: timer
+    });
+  },
+
   createTimer: function(timer) {
     const t = helpers.newTimer(timer);
     this.setState({
       timers: this.state.timers.concat(t)
     });
 
-    client.createTimer(t);
+    client.createTimer(t, (err) => {
+      this.handleError(err, t);
+    });
   },
 
   updateTimer: function(attrs) {
@@ -126,7 +142,10 @@ const TimersDashboard = React.createClass({
             onDeleteClick={this.handleDelete}
             onStartClick={this.handleStartClick}
             onStopClick={this.handleStopClick} />
-          <ToggleableTimerForm onFormSubmit={this.handleCreateFormSubmit} isOpen={true} />
+          <ToggleableTimerForm
+            onFormSubmit={this.handleCreateFormSubmit}
+            isOpen={this.state.serverError}
+            timer={this.state.timerFromError} />
         </div>
       </div>
     );
@@ -218,8 +237,19 @@ const TimerForm = React.createClass({
   getInitialState: function() {
     return {
       titleVal: '',
-      projectVal: ''
+      isTitleValid: true,
+      projectVal: '',
+      isProjectValid: true,
+      serverError: this.props.error
     };
+  },
+
+  componentWillReceiveProps: function(nextProps) {
+    if(this.state.serverError !== nextProps.error) {
+      this.setState({
+        serverError: nextProps.error
+      });
+    }
   },
 
   componentDidMount: function() {
@@ -240,12 +270,24 @@ const TimerForm = React.createClass({
   handleTitleChange: function(ev) {
     this.setState({
       titleVal: ev.target.value
-    });
+    }, this.validateTitle);
   },
 
   handleProjectChange: function(ev) {
     this.setState({
       projectVal: ev.target.value
+    }, this.validateProject);
+  },
+
+  validateTitle: function() {
+    this.setState({
+      isTitleValid: this.state.titleVal
+    });
+  },
+
+  validateProject: function() {
+    this.setState({
+      isProjectValid: this.state.projectVal
     });
   },
 
@@ -254,17 +296,23 @@ const TimerForm = React.createClass({
     return (
       <div className="ui centered card">
         <div className="content">
-          <div className="ui form">
-            <div className={"field" + (this.state.titleVal ? '' : ' error')}>
+          <div className={"ui form" + (this.state.serverError ? ' error' : '')}>
+            {this.state.serverError &&
+              <div className="ui error message">
+                <div className="header">Server not responding...</div>
+                <p>Please try again.</p>
+              </div>
+            }
+            <div className={"field" + (this.state.isTitleValid ? '' : ' error')}>
               <label>Title</label>
-              {!this.state.titleVal &&
+              {!this.state.isTitleValid &&
                 <p className="input-error-msg">This field cannot be empty</p>
               }
               <input type="text" ref="title" defaultValue={this.props.title} onChange={this.handleTitleChange}/>
             </div>
-            <div className={"field" + (this.state.projectVal ? '' : ' error')}>
+            <div className={"field" + (this.state.isProjectValid ? '' : ' error')}>
               <label>Project</label>
-              {!this.state.projectVal &&
+              {!this.state.isProjectValid &&
                 <p className="input-error-msg">This field cannot be empty</p>
               }
               <input type="text" ref="project" defaultValue={this.props.project} onChange={this.handleProjectChange}/>
@@ -291,7 +339,26 @@ const TimerForm = React.createClass({
 const ToggleableTimerForm = React.createClass({
   getInitialState: function() {
     return {
-      isOpen: false
+      isOpen: this.props.isOpen,
+      title: '',
+      project: '',
+      error: false
+    }
+  },
+
+  componentWillReceiveProps: function(nextProps) {
+    if(this.props.isOpen !== nextProps.isOpen) {
+      this.setState({
+        isOpen: nextProps.isOpen
+      });
+    }
+
+    if(nextProps.timer) {
+      this.setState({
+        title: nextProps.timer.title,
+        project: nextProps.timer.project,
+        error: true
+      })
     }
   },
 
@@ -305,13 +372,16 @@ const ToggleableTimerForm = React.createClass({
 
   handleFormSubmit: function(timer) {
     this.props.onFormSubmit(timer);
-    this.setState({isOpen: false});
+    this.setState({isOpen: this.props.isOpen});
   },
 
   render: function() {
     if (this.state.isOpen) {
       return (
         <TimerForm
+          title={this.state.title}
+          project={this.state.project}
+          error={this.state.error}
           onFormClose={this.handleFormClose}
           onFormSubmit={this.handleFormSubmit} />
       );
